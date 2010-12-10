@@ -28,13 +28,14 @@ import org.apache.cassandra.db.migration.Migration;
 import org.apache.cassandra.service.StorageService;
 import org.apache.cassandra.service.MigrationManager;
 import org.apache.cassandra.utils.FBUtilities;
+import org.apache.cassandra.utils.CLibrary;
 
 public class CassandraStorageClient {
   /*
    *  Shamelessy taken from AbstractCassandraDaemon.java
    */
   public static void init() throws IOException {
-    FBUtilities.tryMlockall();
+    CLibrary.tryMlockall();
     Thread.setDefaultUncaughtExceptionHandler(new Thread.UncaughtExceptionHandler() {
         public void uncaughtException(Thread t, Throwable e) {
           if (e instanceof OutOfMemoryError) {
@@ -42,6 +43,7 @@ public class CassandraStorageClient {
           }
         }
       });
+    
     for (CFMetaData cfm : DatabaseDescriptor.getTableMetaData(Table.SYSTEM_TABLE).values())
       ColumnFamilyStore.scrubDataDirectories(Table.SYSTEM_TABLE, cfm.cfName);
     try {

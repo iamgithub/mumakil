@@ -17,6 +17,7 @@
  */
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.lang.NumberFormatException;
 import java.util.Arrays;
 import java.util.ArrayList;
@@ -83,7 +84,7 @@ public class BMTTableLoader extends Configured implements Tool {
             
             for(int i = 0; i < fields.length; i++) {
                 if (i < fieldNames.length && i != keyField) {
-                    columnFamily.addColumn(new QueryPath(cfName, null, fieldNames[i].getBytes("UTF-8")), fields[i].getBytes("UTF-8"), new TimestampClock(timeStamp));
+                    columnFamily.addColumn(new QueryPath(cfName, null, ByteBuffer.wrap(fieldNames[i].getBytes("UTF-8"))), ByteBuffer.wrap(fields[i].getBytes("UTF-8")), timeStamp);
                 }
             }
             columnFamilyList.add(columnFamily);
@@ -91,7 +92,7 @@ public class BMTTableLoader extends Configured implements Tool {
             /* Serialize our data as a binary message and send it out to Cassandra endpoints */
             Message message = MemtableMessenger.createMessage(keyspace, fields[keyField].getBytes("UTF-8"), cfName, columnFamilyList);
             List<IAsyncResult> results = new ArrayList<IAsyncResult>();
-            for (InetAddress endpoint: StorageService.instance.getNaturalEndpoints(keyspace, fields[keyField].getBytes())) {
+            for (InetAddress endpoint: StorageService.instance.getNaturalEndpoints(keyspace, ByteBuffer.wrap(fields[keyField].getBytes()))) {
               results.add(MessagingService.instance.sendRR(message, endpoint));
             }
         }
@@ -118,7 +119,6 @@ public class BMTTableLoader extends Configured implements Tool {
             
             try {
               CassandraStorageClient.init();
-                // init_cassandra();
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }

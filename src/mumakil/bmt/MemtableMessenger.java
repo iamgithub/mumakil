@@ -19,6 +19,7 @@ package org.apache.cassandra.db;
 
 import java.io.IOException;
 import java.util.List;
+import java.nio.ByteBuffer;
 
 import org.apache.cassandra.db.*;
 import org.apache.cassandra.config.CFMetaData;
@@ -44,10 +45,8 @@ public class MemtableMessenger {
     
         /* Get the first column family from list, this is just to get past validation */
         baseColumnFamily = new ColumnFamily(ColumnFamilyType.Standard,
-                                            ClockType.Timestamp,
                                             DatabaseDescriptor.getComparator(Keyspace, CFName),
                                             DatabaseDescriptor.getSubComparator(Keyspace, CFName),
-                                            TimestampReconciler.instance,
                                             CFMetaData.getId(Keyspace, CFName));
         
         for(ColumnFamily cf : ColumnFamiles) {
@@ -55,10 +54,10 @@ public class MemtableMessenger {
             ColumnFamily.serializer().serializeWithIndexes(cf, bufOut);
             byte[] data = new byte[bufOut.getLength()];
             System.arraycopy(bufOut.getData(), 0, data, 0, bufOut.getLength());
-            column = new Column(FBUtilities.toByteArray(cf.id()), data, new TimestampClock(0));
+            column = new Column(ByteBuffer.wrap(intToByteArray(cf.id())), ByteBuffer.wrap(data), 0);
             baseColumnFamily.addColumn(column);
         }
-        rm = new RowMutation(Keyspace, Key);
+        rm = new RowMutation(Keyspace, ByteBuffer.wrap(Key));
         rm.add(baseColumnFamily);
     
         try { /* Make message */
@@ -69,4 +68,13 @@ public class MemtableMessenger {
         }
         return message;
     }
+
+    public static byte[] intToByteArray(int value) {
+        return new byte[] {
+            (byte)(value >>> 24),
+            (byte)(value >>> 16),
+            (byte)(value >>> 8),
+            (byte)value};
+    }
+
 }

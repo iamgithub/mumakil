@@ -17,6 +17,7 @@
  */
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.lang.NumberFormatException;
 import java.util.Arrays;
 import java.util.ArrayList;
@@ -78,14 +79,14 @@ public class BMTKeyValueLoader extends Configured implements Tool {
 
             while (values.hasNext()) {
                 String fields[]    = values.next().toString().split("\t");
-                columnFamily.addColumn(new QueryPath(cfName, null, fields[0].getBytes("UTF-8")), fields[1].getBytes("UTF-8"), new TimestampClock(System.currentTimeMillis()));
+                columnFamily.addColumn(new QueryPath(cfName, null, ByteBuffer.wrap(fields[0].getBytes("UTF-8"))), ByteBuffer.wrap(fields[1].getBytes("UTF-8")), System.currentTimeMillis());
             }
             columnFamilyList.add(columnFamily);
 
             /* Serialize our data as a binary message and send it out to Cassandra endpoints */
             Message message = MemtableMessenger.createMessage(keyspace, key.getBytes(), cfName, columnFamilyList);
             List<IAsyncResult> results = new ArrayList<IAsyncResult>();
-            for (InetAddress endpoint: StorageService.instance.getNaturalEndpoints(keyspace, key.getBytes())) {
+            for (InetAddress endpoint: StorageService.instance.getNaturalEndpoints(keyspace, ByteBuffer.wrap(key.getBytes()))) {
                 results.add(MessagingService.instance.sendRR(message, endpoint));
             }
             
@@ -124,7 +125,7 @@ public class BMTKeyValueLoader extends Configured implements Tool {
      *  Interprets commandline args, sets configuration, and actually runs the job
      */
     public int run(String[] args) {
-        JobConf conf                = new JobConf(getConf(), CassandraTableLoader.class);
+        JobConf conf                = new JobConf(getConf(), BMTKeyValueLoader.class);
         GenericOptionsParser parser = new GenericOptionsParser(conf,args);
 
         conf.setInputFormat(KeyValueTextInputFormat.class);

@@ -30,14 +30,14 @@ import org.apache.hadoop.util.*;
   
  */
 public class DumpTable extends Configured implements Tool {
-    public static class ColumnFamilyMapper extends Mapper<byte[], SortedMap<byte[], IColumn>, Text, Text> {
-        public void map(byte[] key, SortedMap<byte[], IColumn> columns, Context context) throws IOException, InterruptedException {
+    public static class ColumnFamilyMapper extends Mapper<ByteBuffer, SortedMap<ByteBuffer, IColumn>, Text, Text> {
+        public void map(ByteBuffer key, SortedMap<ByteBuffer, IColumn> columns, Context context) throws IOException, InterruptedException {
             String fields = "";
             for (IColumn column : columns.values()) {
-                fields += new String(column.value());
+                fields += column.value().toString();
                 fields += "\t";
             }
-            context.write(new Text(key), new Text(fields));
+            context.write(new Text(key.toString()), new Text(fields));
         }
     }
     
@@ -59,9 +59,9 @@ public class DumpTable extends Configured implements Tool {
 
         // Build a slice predicate from comma separated list of column names
         String[] columnNames = conf.get("cassandra.column_names").split(",");
-        List<byte[]> col_names = new ArrayList<byte[]>();
+        List<ByteBuffer> col_names = new ArrayList<ByteBuffer>();
         for(String name : columnNames) {
-            col_names.add(name.getBytes());
+            col_names.add(ByteBuffer.wrap(name.getBytes()));
         }
         SlicePredicate predicate = new SlicePredicate().setColumn_names(col_names);
         ConfigHelper.setInputSlicePredicate(conf, predicate);

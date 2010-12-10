@@ -26,7 +26,7 @@ Settings.define :src,            :default => "src/mumakil",         :description
 Settings.define :main_class,     :default => "Mumakil",             :description => "Main java class to compile"
 Settings.define :target,         :default => "build",               :description => "Build target, this is where compiled classes live"
 Settings.define :hadoop_home,    :env_var => "HADOOP_HOME",    :default => "/usr/lib/hadoop",                   :description => "Path to hadoop installation"
-Settings.define :cassandra_home, :env_var => "CASSANDRA_HOME", :default => "/home/jacob/Programming/cassandra", :description => "Path to cassandra installation"
+Settings.define :cassandra_home, :env_var => "CASSANDRA_HOME", :default => "/usr/local/share/cassandra",        :description => "Path to cassandra installation"
 Settings.define :hector_home,    :env_var => "HECTOR_HOME",    :default => "/usr/local/share/hector",           :description => "Path to hector installation"
 
 Settings.resolve!
@@ -55,7 +55,17 @@ def srcs options
     "#{options.src}/load/*.java",
     "#{options.src}/dump/*.java",
     "#{options.src}/utils/*.java",
-    "#{options.src}/hector/*.java"
+    # "#{options.src}/hector/*.java"
+  ].inject([]){|sources, src| sources << src; sources}
+  sources.join(' ')
+end
+
+#
+# Get only bmt source files
+#
+def bmt_srcs options
+  sources = Dir[
+    "#{options.src}/bmt/*.java"
   ].inject([]){|sources, src| sources << src; sources}
   sources.join(' ')
 end
@@ -68,6 +78,17 @@ task :compile do
   snakeized = options.main_class.underscore
   mkdir_p File.join(options.target, snakeized)
   system "javac -cp #{classpath(options)} -d #{options.target}/#{snakeized} #{srcs(options)}"
+  system "jar -cvf  #{options.target}/#{snakeized}.jar -C #{options.target}/#{snakeized} . "
+end
+
+#
+# Compile binary memtable classes
+#
+task :compile_bmt do
+  puts "Compiling #{options.src} ..."
+  snakeized = options.main_class.underscore
+  mkdir_p File.join(options.target, snakeized)
+  system "javac -cp #{classpath(options)} -d #{options.target}/#{snakeized} #{bmt_srcs(options)}"
   system "jar -cvf  #{options.target}/#{snakeized}.jar -C #{options.target}/#{snakeized} . "
 end
 
