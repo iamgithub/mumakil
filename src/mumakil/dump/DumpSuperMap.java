@@ -1,8 +1,6 @@
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.*;
-import java.io.DataInputStream;
-import java.io.ByteArrayInputStream;
 import org.apache.commons.lang.ArrayUtils;
 
 import org.apache.cassandra.avro.Column;
@@ -28,45 +26,53 @@ import org.apache.hadoop.mapreduce.Reducer;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 import org.apache.hadoop.util.*;
 
-/*
-  
-  Dumps out select columns from every row in a column family as a tsv file to hdfs.
-  
- */
-public class DumpColumnNames extends Configured implements Tool {
-    public static class ColumnFamilyMapper extends Mapper<byte[], SortedMap<byte[], IColumn>, Text, Text> {
+public class DumpSuperMap extends Configured implements Tool {
+    public static class ColumnFamilyMapper extends Mapper<ByteBuffer, SortedMap<ByteBuffer, IColumn>, Text, Text> {
         
         private Integer longNames;
         
-        public void map(byte[] key, SortedMap<byte[], IColumn> columns, Context context) throws IOException, InterruptedException {
-            String names = "";
+        public void map(ByteBuffer key, SortedMap<ByteBuffer, IColumn> columns, Context context) throws IOException, InterruptedException {
+            String fields = "";
             if(longNames == 1) {
-                for (IColumn column : columns.values()) {
-                    ByteArrayInputStream bis = new ByteArrayInputStream(column.name());
-                    DataInputStream dis      = new DataInputStream(bis);
-                    names += dis.readLong();
-                    names += "\t";
+                for (IColumn superColumn : columns.values()) {
+                    Long superColName = superColumn.name().getLong();
+                    for(IColumn column : superColumn.getSubColumns()) {
+                        fields = "";
+                        fields += superColName;
+                        fields += "\t";
+                        fields += column.name().getLong();
+                        fields += "\t";
+                        fields += CassandraUtils.byteBufferToString(column.value());
+                        context.write(new Text(CassandraUtils.byteBufferToString(key)), new Text(fields));
+                    }
                 }
             } else {
-                for (IColumn column : columns.values()) {
-                    names += new String(column.name());
-                    names += "\t";
+                for (IColumn superColumn : columns.values()) {
+                    String superColName = CassandraUtils.byteBufferToString(superColumn.name());
+                    for(IColumn column : superColumn.getSubColumns()) {
+                        fields = "";
+                        fields += superColName;
+                        fields += "\t";
+                        fields += CassandraUtils.byteBufferToString(column.name());
+                        fields += "\t";
+                        fields += CassandraUtils.byteBufferToString(column.value());
+                        context.write(new Text(CassandraUtils.byteBufferToString(key)), new Text(fields));
+                    }
                 }
             }
-            context.write(new Text(key), new Text(names));
         }
 
         protected void setup(org.apache.hadoop.mapreduce.Mapper.Context context) throws IOException, InterruptedException {
             Configuration conf = context.getConfiguration();
-            this.longNames     = Integer.parseInt(conf.get("cassandra.longnames"));
+            this.longNames    = Integer.parseInt(conf.get("cassandra.longnames"));
         }
 
     }
     
     public int run(String[] args) throws Exception {
         Job job                    = new Job(getConf());
-        job.setJarByClass(DumpColumnNames.class);
-        job.setJobName("DumpColumnNames");
+        job.setJarByClass(DumpSuperMap.class);
+        job.setJobName("DumpSuperMap");
         job.setNumReduceTasks(0);
         job.setMapperClass(ColumnFamilyMapper.class);        
         job.setInputFormatClass(ColumnFamilyInputFormat.class);
@@ -79,9 +85,9 @@ public class DumpColumnNames extends Configured implements Tool {
         ConfigHelper.setInitialAddress(conf, conf.get("cassandra.initial_host"));
         ConfigHelper.setInputColumnFamily(conf, conf.get("cassandra.keyspace"), conf.get("cassandra.column_family"));
 
-        SliceRange range = new SliceRange(ArrayUtils.EMPTY_BYTE_ARRAY, ArrayUtils.EMPTY_BYTE_ARRAY, false, Integer.MAX_VALUE);
+        SliceRange range = new SliceRange(ByteBuffer.wrap(ArrayUtils.EMPTY_BYTE_ARRAY), ByteBuffer.wrap(ArrayUtils.EMPTY_BYTE_ARRAY), false, Integer.MAX_VALUE);
         SlicePredicate predicate = new SlicePredicate().setColumn_names(null).setSlice_range(range);
-       
+        
         ConfigHelper.setInputSlicePredicate(conf, predicate);
 
         // Handle output path
@@ -97,7 +103,7 @@ public class DumpColumnNames extends Configured implements Tool {
     }
 
     public static void main(String[] args) throws Exception {
-        ToolRunner.run(new Configuration(), new DumpColumnNames(), args);
+        ToolRunner.run(new Configuration(), new DumpSuperMap(), args);
         System.exit(0);
     }
 }

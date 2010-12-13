@@ -65,7 +65,8 @@ end
 #
 def bmt_srcs options
   sources = Dir[
-    "#{options.src}/bmt/*.java"
+    "#{options.src}/bmt/*.java",
+    "#{options.src}/utils/*.java"
   ].inject([]){|sources, src| sources << src; sources}
   sources.join(' ')
 end

@@ -34,13 +34,13 @@ public class DumpTable extends Configured implements Tool {
         public void map(ByteBuffer key, SortedMap<ByteBuffer, IColumn> columns, Context context) throws IOException, InterruptedException {
             String fields = "";
             for (IColumn column : columns.values()) {
-                fields += column.value().toString();
+                fields += CassandraUtils.byteBufferToString(column.value());
                 fields += "\t";
             }
-            context.write(new Text(key.toString()), new Text(fields));
+            context.write(new Text(CassandraUtils.byteBufferToString(key)), new Text(fields));
         }
     }
-    
+
     public int run(String[] args) throws Exception {
         Job job                    = new Job(getConf());
         job.setJarByClass(DumpTable.class);

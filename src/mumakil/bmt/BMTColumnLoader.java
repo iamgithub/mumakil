@@ -72,7 +72,7 @@ public class BMTColumnLoader extends Configured implements Tool {
             
             for(int i = 0; i < fields.length; i++) {
                 if (i != keyField) {
-                    columnFamily.addColumn(new QueryPath(cfName, null, ByteBuffer.wrap(fields[i].getBytes("UTF-8"))), ByteBuffer.wrap(fillValue.getBytes("UTF-8")), System.currentTimeMillis());
+                    columnFamily.addColumn(new QueryPath(cfName, null, ByteBuffer.wrap(CassandraUtils.stringToLongBytes(fields[i]))), ByteBuffer.wrap(fillValue.getBytes("UTF-8")), System.currentTimeMillis());
                 }
             }
             columnFamilyList.add(columnFamily);

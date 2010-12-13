@@ -1,5 +1,6 @@
 import java.io.IOException;
-import java.nio.ByteBuffer;
+import java.nio.*;
+import java.nio.charset.*;
 import java.util.*;
 
 import org.apache.cassandra.avro.Column;
@@ -7,6 +8,10 @@ import org.apache.cassandra.avro.ColumnOrSuperColumn;
 import org.apache.cassandra.avro.Mutation;
 
 public class CassandraUtils {
+
+    public static Charset charset = Charset.forName("UTF-8");
+    public static CharsetEncoder encoder = charset.newEncoder();
+    public static CharsetDecoder decoder = charset.newDecoder();
 
     public static byte[] stringToLongBytes(String value) {
         Long longValue = Long.parseLong(value);
@@ -20,6 +25,10 @@ public class CassandraUtils {
         asBytes[6] = (byte)(longValue >>>  8);
         asBytes[7] = (byte)(longValue >>>  0);
         return asBytes;
+    }
+
+    public static String byteBufferToString(ByteBuffer buffer) throws CharacterCodingException {
+        return decoder.decode(buffer).toString();
     }
     
     public static Mutation getMutation(String name, String value, Long timeStamp) {
